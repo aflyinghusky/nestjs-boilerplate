@@ -8,11 +8,11 @@ export default class TelegramTransport extends Transport {
     this.tg = tg;
   }
 
-  log(info: { message: string, level: string }, callback: () => void) {
+  log(info: { message: string; level: string }, callback: () => void) {
     if (typeof info.message !== 'string') {
       info.message = JSON.stringify(info.message, null, 2);
     }
     this.tg.sendMessage(info.message, info.level);
     callback();
   }
-};
+}

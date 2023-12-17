@@ -28,6 +28,6 @@ export default () => {
     logging: {
       tg_token: process.env.TELEGRAM_TOKEN,
       tg_channel: process.env.TELEGRAM_CHANNEL,
-    }
+    },
   };
 };

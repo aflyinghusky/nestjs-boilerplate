@@ -17,8 +17,8 @@ async function bootstrap() {
     origin: '*',
   });
   app.useGlobalFilters(new HttpExceptionFilter());
-	app.setGlobalPrefix('/api/');
-	const logger = app.get(LoggerService);
+  app.setGlobalPrefix('/api/');
+  const logger = app.get(LoggerService);
   configSwagger(app);
   app.useGlobalPipes(
     new ValidationPipe({
@@ -27,11 +27,11 @@ async function bootstrap() {
   );
   const port = process.env.PORT || 3001;
   await app.listen(port, () => {
-		logger.info(`Application running on port ${port}`);
+    logger.info(`Application running on port ${port}`);
   });
 
   process.on('uncaughtException', (error: Error) => {
-		logger.error(error);
-	});
+    logger.error(error);
+  });
 }
 bootstrap();

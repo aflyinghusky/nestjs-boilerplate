@@ -1,3 +1,1 @@
-export const entities = [
-    
-];
+export const entities = [];

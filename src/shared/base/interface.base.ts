@@ -1,5 +1,5 @@
 export interface Credentials {
-    id?: string;
-    email?: string;
-    isAdmin?: boolean;
+  id?: string;
+  email?: string;
+  isAdmin?: boolean;
 }

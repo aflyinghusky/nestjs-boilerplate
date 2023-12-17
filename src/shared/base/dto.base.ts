@@ -1,5 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsNumberString, IsOptional, IsString, IsUUID } from 'class-validator';
+import {
+  IsEnum,
+  IsNumberString,
+  IsOptional,
+  IsString,
+  IsUUID,
+} from 'class-validator';
 
 export class getOneDto {
   @ApiProperty()
@@ -17,25 +23,24 @@ export enum SortDirection {
   DESC = 'DESC',
 }
 
-
 export class GetManyQueryDto {
   @ApiPropertyOptional()
   @IsString()
   @IsOptional()
-  sortBy?: string
+  sortBy?: string;
 
   @ApiPropertyOptional()
   @IsNumberString()
   @IsOptional()
-  limit?: number
+  limit?: number;
 
   @ApiPropertyOptional()
   @IsNumberString()
   @IsOptional()
-  page?: number
+  page?: number;
 
   @ApiPropertyOptional()
   @IsEnum(SortDirection)
   @IsOptional()
-  sortDirection?: string
+  sortDirection?: string;
 }

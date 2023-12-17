@@ -1,8 +1,5 @@
-export const notFoundErrors = {
-};
+export const notFoundErrors = {};
 
-export const badRequestErrors = {
-};
+export const badRequestErrors = {};
 
-export const internalServerErrors = {
-};
+export const internalServerErrors = {};

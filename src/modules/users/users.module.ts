@@ -7,8 +7,8 @@ import { User } from './model/users.entity';
 const UserRepository = TypeOrmModule.forFeature([User]);
 
 @Module({
-    imports: [UserRepository],
-    controllers: [UsersController],
-    providers: [UsersService],
+  imports: [UserRepository],
+  controllers: [UsersController],
+  providers: [UsersService],
 })
-export class UsersModule { }
+export class UsersModule {}

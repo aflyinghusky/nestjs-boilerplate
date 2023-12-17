@@ -17,8 +17,8 @@ import { Credentials } from './interface.base';
 export abstract class BaseService<T extends BaseEntity>
   implements IBaseService<T>
 {
-  notfoundMessage: string = 'Item not found';
-  existingErrorMessage: string = 'Existing item';
+  notfoundMessage = 'Item not found';
+  existingErrorMessage = 'Existing item';
   constructor(private readonly genericRepository: Repository<T>) {}
 
   async create(data: DeepPartial<T>, opts?: ICreateOptions<T>): Promise<T> {
