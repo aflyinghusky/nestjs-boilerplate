@@ -22,6 +22,8 @@ export class TransformInterceptor<T>
     if (context['contextType'] === 'rmq') {
       return next.handle();
     }
-    return next.handle().pipe(map((data) => ({ data, success: true })));
+    return next
+      .handle()
+      .pipe(map((data) => ({ data, success: true, error_code: 0 })));
   }
 }

@@ -25,21 +25,29 @@ export class LoggerService {
     );
   }
 
-  error(error: any, context?: string) {
-    if (!error) return;
+  error(error: any, _context?: string) {
+    const messageLog = this.getLogMessage(error);
+    this.logger.error(messageLog);
+  }
+
+  logExternal(error, channel = 'TELEGRAM') {
+    const logMessage = this.getLogMessage(error)
+    switch (channel) {
+      case 'TELEGRAM': {
+        this.telegramLogger.sendMessage(logMessage);
+      }
+    }
+  }
+
+  getLogMessage(error: any, context?: string) {
     const errorMessage = typeof error == 'object' ? error.message : error;
     const logMessage = context
-      ? `${context}: message: ${errorMessage}\n[Stack]: ${
-          error instanceof Error ? error.stack : ''
-        }`
-      : `message: ${errorMessage}${
-          error instanceof Error ? `\n[Stack]: ${error.stack}` : ''
-        }`;
+      ? `${context}: message: ${errorMessage}\n[Stack]: ${error instanceof Error ? error.stack : ''
+      }`
+      : `message: ${errorMessage}\n[Stack]: ${error instanceof Error ? error.stack : ''
+      }`;
 
-    if (this.shouldFireExternal) {
-      this.telegramLogger.sendMessage(logMessage);
-    }
-    this.logger.error(logMessage);
+    return logMessage;
   }
 
   info(message: any) {

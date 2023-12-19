@@ -8,10 +8,14 @@ import { LoggerModule } from './shared/logger/logger.module';
 import { ConfigModule } from '@nestjs/config';
 import { DatabaseConfig } from './database/database.config';
 import config from './configs';
+import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
+import { TransformInterceptor } from './interceptors/http-response.interceptors';
+import { GlobalExceptionFilter } from '@shared/exceptions/global.exception';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, load: [config] }),
+    ConfigModule.forRoot({ isGlobal: true }),
     TypeOrmModule.forRootAsync({
       useClass: DatabaseConfig,
       dataSourceFactory: async (options) => {
@@ -24,6 +28,16 @@ import config from './configs';
     LoggerModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: TransformInterceptor,
+    },
+    {
+      provide: APP_FILTER,
+      useClass: GlobalExceptionFilter,
+    },
+  ],
 })
 export class AppModule {}
