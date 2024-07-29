@@ -1,11 +1,13 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import {
   IsEnum,
-  IsNumberString,
+  IsNumber,
   IsOptional,
   IsString,
   IsUUID,
 } from 'class-validator';
+import { DeepPartial } from 'typeorm';
 
 export class getOneDto {
   @ApiProperty()
@@ -23,24 +25,38 @@ export enum SortDirection {
   DESC = 'DESC',
 }
 
-export class GetManyQueryDto {
+export enum SortBy {
+  CREATED_AT = 'created_at',
+  UPDATED_AT = 'updated_at',
+  ID = 'id',
+  CREATOR_ID = 'creator_id',
+}
+
+export class GetManyQueryDto<T> {
   @ApiPropertyOptional()
   @IsString()
   @IsOptional()
-  sortBy?: string;
+  sort_by?: keyof DeepPartial<T>;
 
   @ApiPropertyOptional()
-  @IsNumberString()
+  @IsNumber()
   @IsOptional()
+  @Type(() => Number)
   limit?: number;
 
   @ApiPropertyOptional()
-  @IsNumberString()
+  @IsNumber()
   @IsOptional()
+  @Type(() => Number)
   page?: number;
 
   @ApiPropertyOptional()
   @IsEnum(SortDirection)
   @IsOptional()
-  sortDirection?: string;
+  sort_direction?: SortDirection;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  cursor?: string;
 }

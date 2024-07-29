@@ -1,4 +1,10 @@
-import { DeepPartial, FindOptionsWhere, Not, Repository } from 'typeorm';
+import {
+  DeepPartial,
+  FindOptionsWhere,
+  InsertResult,
+  Not,
+  Repository,
+} from 'typeorm';
 import { BaseEntity } from './entity.base';
 import {
   IBaseDeleteOne,
@@ -6,19 +12,23 @@ import {
   IBaseFindMany,
   IBaseFindOne,
   IBaseService,
+  IBaseUpdateMany,
   IBaseUpdateOne,
   ICreateOptions,
+  IUpsertService,
 } from './IBase.service';
-import { buildFindingQuery } from './build-finding-query';
-import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
+import { buildFindingQuery, getNextCursor } from './build-finding-query';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Credentials } from './interface.base';
+import { ERRORS_DICTIONARY } from 'src/constants/error-dictionary.constant';
+import { CONSTRAINT_VALUES } from 'src/constants/constraints';
 
 export abstract class BaseService<T extends BaseEntity>
   implements IBaseService<T>
 {
-  notfoundMessage = 'Item not found';
-  existingErrorMessage = 'Existing item';
+  notfoundErrorCode = ERRORS_DICTIONARY.ITEM_NOTFOUND;
+  existingErrorCode = ERRORS_DICTIONARY.ITEM_EXISTED;
+
   constructor(private readonly genericRepository: Repository<T>) {}
 
   async create(data: DeepPartial<T>, opts?: ICreateOptions<T>): Promise<T> {
@@ -29,7 +39,7 @@ export abstract class BaseService<T extends BaseEntity>
     }
 
     if (opts?.credentials) {
-      data.created_by = opts.credentials.id;
+      data.creator_id = opts.credentials.id;
     }
 
     const baseCreated = await this.genericRepository.save(data);
@@ -39,7 +49,7 @@ export abstract class BaseService<T extends BaseEntity>
   async createMany(entities: T[], credentials?: Credentials): Promise<T[]> {
     if (credentials) {
       entities = entities.map((each) => {
-        each.created_by = credentials.id;
+        each.creator_id = credentials.id;
         return each;
       });
     }
@@ -47,27 +57,37 @@ export abstract class BaseService<T extends BaseEntity>
   }
 
   async findOne(opts: IBaseFindOne<T>) {
-    const { credentials, query, notFoundMessage } = opts;
+    try {
+      const { credentials, query, notfoundErrorCode } = opts;
 
-    this.applyCreatedByFilter(query, credentials);
+      this.applyCreatedByFilter(query, credentials);
 
-    const record = await this.genericRepository.findOne({
-      where: {
-        ...(query as FindOptionsWhere<T>),
-        is_deleted: false,
-      },
-      relations: opts.relations || [],
-    });
+      const record = await this.genericRepository.findOne({
+        where: {
+          ...(query as FindOptionsWhere<T>),
+          is_deleted: false,
+        },
+        relations: opts.relations || [],
+      });
 
-    if (!record) {
-      throw new NotFoundException(notFoundMessage || this.notfoundMessage);
+      if (!record) {
+        throw new NotFoundException(
+          notfoundErrorCode || this.notfoundErrorCode,
+        );
+      }
+
+      return record;
+    } catch (error) {
+      if (opts.ignoreError) {
+        return;
+      }
+
+      throw error;
     }
-
-    return record;
   }
 
   async updateOne(opts: IBaseUpdateOne<T>) {
-    const { credentials, query } = opts;
+    const { credentials, query, notFoundMessage, notfoundErrorCode } = opts;
     this.applyCreatedByFilter(query, credentials);
     const record = await this.genericRepository.findOne({
       where: {
@@ -77,7 +97,7 @@ export abstract class BaseService<T extends BaseEntity>
     });
 
     if (!record) {
-      throw new NotFoundException(opts.notFoundMessage || this.notfoundMessage);
+      throw new NotFoundException(notfoundErrorCode || this.notfoundErrorCode);
     }
 
     if (
@@ -92,23 +112,36 @@ export abstract class BaseService<T extends BaseEntity>
 
       if (existingRecord) {
         throw new BadRequestException(
-          opts.existingErrorMessage || this.existingErrorMessage,
+          opts.existingErrorCode || this.existingErrorCode,
         );
       }
     }
-
-    await this.genericRepository.update(record.id, opts.updateOneData);
+    Object.assign(record, opts.updateOneData);
+    await this.genericRepository.save(record);
 
     return this.genericRepository.findOne({
       where: { id: record.id } as FindOptionsWhere<T>,
     });
   }
 
+  async updateMany(opts: IBaseUpdateMany<T>) {
+    const { credentials, query } = opts;
+    this.applyCreatedByFilter(query, credentials);
+
+    return await this.genericRepository.update(
+      {
+        ...(query as FindOptionsWhere<T>),
+        is_deleted: false,
+      },
+      opts.updateData,
+    );
+  }
+
   async findMany(opts: IBaseFindMany<T>) {
     try {
       const { credentials, query } = opts;
       this.applyCreatedByFilter(query as any, credentials);
-      const { sortingCondition, findingQuery, limit, offset } =
+      const { sortingCondition, findingQuery, limit, offset, sort_by } =
         buildFindingQuery<T>({ query: opts.query });
 
       const [records, total] = await Promise.all([
@@ -118,12 +151,19 @@ export abstract class BaseService<T extends BaseEntity>
           skip: Number(offset),
           take: Number(limit),
           relations: opts.relations || [],
+          select: opts.fields as any,
         }),
         this.genericRepository.count({ where: findingQuery }),
       ]);
 
+      const nextCursor = getNextCursor({
+        data: records,
+        sort_by,
+      });
+
       return {
         total,
+        cursor: nextCursor,
         records: records,
       };
     } catch (error) {
@@ -139,6 +179,7 @@ export abstract class BaseService<T extends BaseEntity>
       const records = await this.genericRepository.find({
         where: findAllQuery,
         relations: opts.relations || [],
+        select: opts.select,
       });
 
       return records;
@@ -148,7 +189,7 @@ export abstract class BaseService<T extends BaseEntity>
   }
 
   async deleteOne(opts: IBaseDeleteOne<T>): Promise<boolean> {
-    const { credentials, query } = opts;
+    const { credentials, query, notFoundMessage, notfoundErrorCode } = opts;
     this.applyCreatedByFilter(query, credentials);
 
     const record = await this.genericRepository.findOne({
@@ -159,10 +200,32 @@ export abstract class BaseService<T extends BaseEntity>
     });
 
     if (!record) {
-      throw new NotFoundException(opts.notFoundMessage || this.notfoundMessage);
+      throw new NotFoundException(notfoundErrorCode || this.notfoundErrorCode);
     }
 
-    await this.genericRepository.softDelete(record.id);
+    Object.assign(record, { is_deleted: true, deleted_at: new Date() });
+
+    await this.genericRepository.save(record);
+    return true;
+  }
+
+  async hardDeleteOne(opts: IBaseDeleteOne<T>): Promise<boolean> {
+    const { credentials, query, notFoundMessage, notfoundErrorCode } = opts;
+    this.applyCreatedByFilter(query, credentials);
+    const { findingQuery, sortingCondition } = buildFindingQuery({ query });
+    const record = await this.genericRepository.findOne({
+      where: {
+        ...findingQuery,
+        is_deleted: false,
+      },
+      order: sortingCondition,
+    });
+
+    if (!record) {
+      throw new NotFoundException(notfoundErrorCode || this.notfoundErrorCode);
+    }
+
+    await this.genericRepository.delete(record.id);
     return true;
   }
 
@@ -178,19 +241,45 @@ export abstract class BaseService<T extends BaseEntity>
 
     if (record) {
       throw new BadRequestException(
-        opts.existingErrorMessage || this.existingErrorMessage,
+        opts.existingErrorCode || this.existingErrorCode,
       );
     }
 
     return false;
   }
 
-  private applyCreatedByFilter(
+  protected applyCreatedByFilter(
     query: { [key in string & keyof T]?: T | any },
     credentials?: Credentials,
   ) {
-    if (credentials && !credentials.isAdmin) {
-      query.created_by = credentials.id;
+    if (credentials && !credentials.is_admin && !credentials.is_public) {
+      query.creator_id = credentials.id;
+    }
+  }
+
+  async upsert({
+    upsertData,
+    constraint,
+  }: IUpsertService<T>): Promise<InsertResult> {
+    return this.genericRepository.upsert(
+      upsertData,
+      CONSTRAINT_VALUES[constraint],
+    );
+  }
+
+  async count(opts: IBaseFindAll<T>) {
+    try {
+      const { credentials, query } = opts;
+      this.applyCreatedByFilter(query as any, credentials);
+      const { findAllQuery } = buildFindingQuery<T>({ query: opts.query });
+      const records = await this.genericRepository.count({
+        where: findAllQuery,
+        relations: opts.relations || [],
+      });
+
+      return records;
+    } catch (error) {
+      return Promise.reject(error);
     }
   }
 }

@@ -15,7 +15,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
   constructor(
     private readonly config_service: ConfigService,
     private readonly logger: LoggerService,
-  ) { }
+  ) {}
   catch(exception: any, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
@@ -38,7 +38,6 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       } else {
         error_object.error_message = exception;
       }
-
     }
 
     response.status(error_object.status_code).json({
@@ -48,9 +47,9 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       error:
         this.config_service.get('ENV') !== 'dev'
           ? {
-            response: exception.response,
-            stack: exception.stack,
-          }
+              response: exception.response,
+              stack: exception.stack,
+            }
           : undefined,
     });
   }

@@ -31,7 +31,7 @@ export class LoggerService {
   }
 
   logExternal(error, channel = 'TELEGRAM') {
-    const logMessage = this.getLogMessage(error)
+    const logMessage = this.getLogMessage(error);
     switch (channel) {
       case 'TELEGRAM': {
         this.telegramLogger.sendMessage(logMessage);
@@ -42,10 +42,12 @@ export class LoggerService {
   getLogMessage(error: any, context?: string) {
     const errorMessage = typeof error == 'object' ? error.message : error;
     const logMessage = context
-      ? `${context}: message: ${errorMessage}\n[Stack]: ${error instanceof Error ? error.stack : ''
-      }`
-      : `message: ${errorMessage}\n[Stack]: ${error instanceof Error ? error.stack : ''
-      }`;
+      ? `${context}: message: ${errorMessage}\n[Stack]: ${
+          error instanceof Error ? error.stack : ''
+        }`
+      : `message: ${errorMessage}\n[Stack]: ${
+          error instanceof Error ? error.stack : ''
+        }`;
 
     return logMessage;
   }

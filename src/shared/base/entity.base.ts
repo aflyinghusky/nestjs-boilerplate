@@ -19,7 +19,7 @@ export class BaseEntity {
   @Column({ default: false, type: 'bool' })
   is_deleted: boolean;
 
-  created_by?: string;
+  creator_id: string;
 
   @DeleteDateColumn({ name: 'deleted_at' })
   deleted_at: Date;
