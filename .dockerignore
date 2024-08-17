@@ -1,0 +1,8 @@
+.dockerignore
+Dockerfile
+dist/
+scripts/
+node_modules
+.env
+.prettierrc
+yarn.lock
